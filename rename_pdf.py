@@ -239,6 +239,8 @@ if __name__ == '__main__':
 
     total_files = len(pdfs)
 
+    new_names = []
+
     for pdf in pdfs:
 
         root = pdf[0]
@@ -250,12 +252,19 @@ if __name__ == '__main__':
 
         new_name = GetNewName(pdf)
 
+        c = 1
+        while new_name in new_names:
+            new_name = new_name + '_' + str(c)
+            c += 1
+        
         if new_name:
 
             os.rename(full_path, os.path.join(root, new_name+'.pdf'))
             total_renamed += 1
             print('New name: {}'.format(new_name))
             print('Total renamed: {}/{}\n'.format(total_renamed, total_files))
+
+            new_names.append(new_name)
 
         else:
 
