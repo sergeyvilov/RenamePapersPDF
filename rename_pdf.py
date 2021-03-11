@@ -42,9 +42,10 @@ def GetDOIbyTile(title):
     query = crossref + 'works?query="{}"'.format(title)
     r = requests.get(query)
 
-    item = r.json()
 
     try:
+
+        item = r.json()
 
         first_result = item['message']['items'][0]
         doi = first_result['DOI']
