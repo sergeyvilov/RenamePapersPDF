@@ -9,6 +9,7 @@ import requests
 import os
 import fitz #PyMuPDF
 import re
+import time
 
 RENAME_WITH_META_AUTORIZED = 0 #rename using meta data in the pdf if we can't find DOI
 DOI_BY_TITLE_AUTORIZED = 1 #if there's no DOI on the first page, get DOI from the paper's title
@@ -213,10 +214,14 @@ def GetNewName(pdf):
 
     new_name = None
 
-    if doi:
-        new_name = RenameWithDOI(doi)
-    elif RENAME_WITH_META_AUTORIZED:
-        new_name = RenameWithMETA(meta)
+    try:
+       new_name = RenameWithDOI(doi)
+    except:
+       try:
+           if RENAME_WITH_META_AUTORIZED:
+               new_name = RenameWithMETA(meta)
+       except:
+           return None
 
     if new_name and len(new_name)<MINIMAL_FILE_NAME_LENGTH:
         print('Suggested file name is too short: {}.pdf'.format(new_name))
@@ -245,31 +250,51 @@ if __name__ == '__main__':
     for pdf in pdfs:
 
         root = pdf[0]
-        full_path = os.path.join(pdf[0], pdf[1])
+        old_name = pdf[1]
 
-        print('Trying to rename:\n{}'.format(full_path))
+        print('Trying to rename:\n{}'.format(os.path.join(root, old_name)))
 
-        pdf = fitz.open(full_path)
+        pdf = fitz.open(os.path.join(root, old_name))
 
-        new_name = GetNewName(pdf)
+        new_name_base = GetNewName(pdf)
 
-        c = 1
-        while new_name in new_names:
-            new_name = new_name + '_' + str(c)
-            c += 1
-        
-        if new_name:
+        if new_name_base:
 
-            os.rename(full_path, os.path.join(root, new_name+'.pdf'))
-            total_renamed += 1
-            print('New name: {}'.format(new_name))
-            print('Total renamed: {}/{}\n'.format(total_renamed, total_files))
+            if os.path.join(root, new_name_base+'.pdf') in new_names:
+                n = re.search('(.+?)_([0-9]+)$',new_name_base)
+                if n:
+                    new_name_base,count = n.groups(1)
+                    count = int(count)
+                    while os.path.join(root, new_name_base+'_'+str(count)+'.pdf') in new_names:
+                        count += 1
+                    new_name_base = new_name_base + '_' + str(count)
+                else:
+                    new_name_base = new_name_base + '_2'
 
-            new_names.append(new_name)
+            new_name = new_name_base + '.pdf'
+
+            try:
+                print('New name: {}'.format(new_name))
+                temporary_name = os.path.join(root, new_name+'.tmp')
+                os.rename(os.path.join(root, old_name), temporary_name)
+                while not os.path.exists(temporary_name):
+                    time.sleep(0.25)
+                total_renamed += 1
+                print('Total renamed: {}/{}\n'.format(total_renamed, total_files))
+                new_names.append(os.path.join(root, new_name))
+            except Exception as e:
+                print('Error during renaming:')
+                print(e)
+                print('Not renamed\n')
 
         else:
 
             print('Not renamed\n')
+
+for new_name in new_names:
+    os.rename(new_name+'.tmp', new_name)
+    while not os.path.exists(new_name):
+        time.sleep(0.25)
 
 print('Total files processed: {}'.format(total_files))
 print('Total files renamed: {}'.format(total_renamed))
