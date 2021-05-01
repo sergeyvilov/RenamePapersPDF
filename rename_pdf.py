@@ -1,4 +1,4 @@
-#Python3 script for renaming pdf files of scientific papers
+#Rename pdf files of scientific papers
 #Looks for all pdfs in a given directory and its subdirectories
 #and gives them human-readable names based on their DOI
 
@@ -11,7 +11,7 @@ import fitz #PyMuPDF
 import re
 import time
 
-RENAME_WITH_META_AUTORIZED = 0 #rename using meta data in the pdf if we can't find DOI
+RENAME_WITH_META_AUTORIZED = 0 #rename using meta data in the pdf if we can't find DOI (works badly)
 DOI_BY_TITLE_AUTORIZED = 1 #if there's no DOI on the first page, get DOI from the paper's title
 MINIMAL_FILE_NAME_LENGTH = 10 #minimal length of the new name
 
@@ -43,7 +43,6 @@ def GetDOIbyTile(title):
     query = crossref + 'works?query="{}"'.format(title)
     r = requests.get(query)
 
-
     try:
 
         item = r.json()
@@ -58,7 +57,7 @@ def GetDOIbyTile(title):
         print('No DOI found')
         return None
 
-#Remove from the new name symbols that are forbidden in file names
+#Remove from the proposed name symbols that are forbidden in file names
 def CleanName(name):
 
     safe_name = ''
@@ -75,7 +74,7 @@ def CleanName(name):
 
     return safe_name
 
-#remove last symbol that happened to be in DOI due to poor parsing/noise
+#remove last symbol that happens to be in DOI due to poor parsing/noise
 def CleanDOI(doi):
 
     l = len(doi)
@@ -237,10 +236,10 @@ if __name__ == '__main__':
     argv = sys.argv[1]
 
     if IsPDF(argv):
-        #script argument - pdf file to rename
+        #1st argument - pdf file to rename
         pdfs = [('', argv)]
     else:
-        #script argument - directory to scan for pdfs
+        #1st argument - directory to scan for pdfs
         pdfs = GetAllPDF(argv)
 
     total_files = len(pdfs)
@@ -275,10 +274,10 @@ if __name__ == '__main__':
 
             try:
                 print('New name: {}'.format(new_name))
-                temporary_name = os.path.join(root, new_name+'.tmp')
+                temporary_name = os.path.join(root, new_name+'.tmp') #first we create tmp files and then rename them to pdf
                 os.rename(os.path.join(root, old_name), temporary_name)
                 while not os.path.exists(temporary_name):
-                    time.sleep(0.25)
+                    time.sleep(0.25) #wait until file is really on the disk
                 total_renamed += 1
                 print('Total renamed: {}/{}\n'.format(total_renamed, total_files))
                 new_names.append(os.path.join(root, new_name))
@@ -292,7 +291,7 @@ if __name__ == '__main__':
             print('Not renamed\n')
 
 for new_name in new_names:
-    os.rename(new_name+'.tmp', new_name)
+    os.rename(new_name+'.tmp', new_name) #.tmp-->.pdf
     while not os.path.exists(new_name):
         time.sleep(0.25)
 
